@@ -72,7 +72,7 @@ export function createUsersTable<TExtra extends Record<string, AnyPgColumn>>(
       );
     }
   }
-  return pgTable("users", { ...base, ...extraColumns });
+  return pgTable("users", { ...base, ...extraColumns } as any);
 }
 
 // Sessions ─ owned by the package.

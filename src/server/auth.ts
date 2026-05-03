@@ -253,7 +253,8 @@ export async function consumeEmailVerificationToken(
 // every existing user that doesn't have it set yet.
 export async function backfillEmailVerified(): Promise<number> {
   const { db } = ctx();
-  const result = await db.execute<{ id: string }>(sql`
+  // @ts-ignore - drizzle execute generics on untyped db
+  const result = await (db as any).execute<{ id: string }>(sql`
     UPDATE users
     SET email_verified_at = created_at
     WHERE email_verified_at IS NULL
@@ -352,7 +353,8 @@ export async function recordFailedLogin(
   const { db } = ctx();
   const lockoutMs = LOCKOUT_MS;
   const maxFails = MAX_FAILED_LOGINS;
-  const result = await db.execute<{
+  // @ts-ignore - drizzle execute generics on untyped db
+  const result = await (db as any).execute<{
     failed_login_count: number;
     locked_until: Date | null;
   }>(sql`
@@ -442,7 +444,8 @@ export async function tryConsumeRecoveryCode(
 ): Promise<{ matched: boolean; remaining: number }> {
   const { db, tables } = ctx();
   return db.transaction(async (tx: any) => {
-    const result = await tx.execute<{ recovery_code_hashes: string[] | null }>(sql`
+    // @ts-ignore - drizzle execute generics on untyped db
+    const result = await (tx as any).execute<{ recovery_code_hashes: string[] | null }>(sql`
       SELECT recovery_code_hashes FROM users WHERE id = ${userId} FOR UPDATE
     `);
     const row = result.rows[0];
