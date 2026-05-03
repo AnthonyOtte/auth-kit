@@ -22,6 +22,7 @@ import {
   jsonb,
   unique,
   type AnyPgColumn,
+  type PgColumnBuilderBase,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -61,9 +62,9 @@ export type AuthUserColumns = ReturnType<typeof authUserColumns>;
 // Build the host's `users` table by merging auth-canonical columns with
 // the host's extra columns. Column names cannot collide with the
 // canonical names (TS will complain at compile time).
-export function createUsersTable<TExtra extends Record<string, AnyPgColumn>>(
-  extraColumns: TExtra = {} as TExtra,
-) {
+export function createUsersTable<
+  TExtra extends Record<string, PgColumnBuilderBase>,
+>(extraColumns: TExtra = {} as TExtra) {
   const base = authUserColumns();
   for (const k of Object.keys(extraColumns)) {
     if (k in base) {
@@ -72,7 +73,7 @@ export function createUsersTable<TExtra extends Record<string, AnyPgColumn>>(
       );
     }
   }
-  return pgTable("users", { ...base, ...extraColumns } as any);
+  return pgTable("users", { ...base, ...extraColumns });
 }
 
 // Sessions ─ owned by the package.
@@ -185,4 +186,87 @@ export interface BaseUserAuthFields {
   totpIssuer: string | null;
   recoveryCodeHashes: string[];
   emailVerifiedAt: Date | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Table factories with FK references — for hosts that want their auth
+// tables to physically reference the users table they declared via
+// createUsersTable(). Mirrors the column shape of the standalone
+// `sessions` / `passwordResetTokens` / `emailVerificationTokens` /
+// `oauthAccounts` / `auditLog` exports above, but each ROW gets a
+// foreign-key constraint pointing at `users.id`.
+
+export function createSessionsTable(users: { id: AnyPgColumn }) {
+  return pgTable("sessions", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id as any, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  });
+}
+
+export function createPasswordResetTokensTable(users: { id: AnyPgColumn }) {
+  return pgTable("password_reset_tokens", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id as any, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  });
+}
+
+export function createEmailVerificationTokensTable(users: { id: AnyPgColumn }) {
+  return pgTable("email_verification_tokens", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id as any, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  });
+}
+
+export function createOAuthAccountsTable(users: { id: AnyPgColumn }) {
+  return pgTable(
+    "oauth_accounts",
+    {
+      id: varchar("id", { length: 36 }).primaryKey(),
+      userId: varchar("user_id", { length: 36 })
+        .notNull()
+        .references(() => users.id as any, { onDelete: "cascade" }),
+      provider: varchar("provider", { length: 32 }).notNull(),
+      providerSubject: varchar("provider_subject", { length: 255 }).notNull(),
+      email: varchar("email", { length: 255 }),
+      createdAt: timestamp("created_at").defaultNow().notNull(),
+    },
+    (t) => ({
+      providerSubjectUnique: unique("oauth_accounts_provider_subject_unique").on(
+        t.provider,
+        t.providerSubject,
+      ),
+    }),
+  );
+}
+
+export function createAuditLogTable(users: { id: AnyPgColumn }) {
+  return pgTable("audit_log", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 }).references(
+      () => users.id as any,
+      { onDelete: "set null" },
+    ),
+    event: varchar("event", { length: 64 }).notNull(),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("user_agent"),
+    meta: jsonb("meta"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  });
 }
