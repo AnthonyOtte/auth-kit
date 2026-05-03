@@ -4,19 +4,21 @@
 // call site. The host calls `initAuthKit({ ... })` once at startup;
 // every helper reads from this context lazily.
 
-import type { sessions, passwordResetTokens, emailVerificationTokens, oauthAccounts, auditLog } from "../shared/schema";
-
-// `users` is host-defined via createUsersTable() — its column shape
-// varies per app, so we keep it loosely typed here. Helpers that touch
-// users use drizzle's parametric query API and don't depend on extra
-// columns.
+// Auth tables are typed permissively because their concrete column
+// shape varies per host — the host's `users` table carries arbitrary
+// extra columns, and the FK-bearing factories return tables that
+// reference the host's own users instance. The package accesses
+// columns dynamically (e.g. tables.users.id) which means a strict
+// PgTable<...> generic would block legitimate property access. The
+// loose typing here is a library-boundary concern; nothing in the
+// host code uses `as any` to satisfy this interface.
 export interface AuthKitTables {
   users: any;
-  sessions: typeof sessions;
-  passwordResetTokens: typeof passwordResetTokens;
-  emailVerificationTokens: typeof emailVerificationTokens;
-  oauthAccounts: typeof oauthAccounts;
-  auditLog: typeof auditLog;
+  sessions: any;
+  passwordResetTokens: any;
+  emailVerificationTokens: any;
+  oauthAccounts: any;
+  auditLog: any;
 }
 
 export interface AuthKitConfig {
