@@ -1,6 +1,6 @@
 {
   "name": "@anthonyotte/auth-kit",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Drop-in email/password + OAuth + 2FA + sessions + audit-log auth for Express/Drizzle apps. Server code and React hooks only — bring your own UI.",
   "license": "MIT",
   "type": "module",
@@ -38,7 +38,7 @@
     "bcrypt": "^6.0.0",
     "express-rate-limit": "^8.4.0",
     "jose": "^6.2.2",
-    "otplib": "^12.0.1",
+    "otplib": "^13.4.0",
     "qrcode": "^1.5.4",
     "zxcvbn": "^4.4.2"
   },
