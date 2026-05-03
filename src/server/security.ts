@@ -1,5 +1,6 @@
 // Crypto / TOTP / password-strength / audit-log helpers.
-import { authenticator } from "otplib";
+import otplib from "otplib";
+const { authenticator } = otplib;
 import QRCode from "qrcode";
 import zxcvbn from "zxcvbn";
 import bcrypt from "bcrypt";
