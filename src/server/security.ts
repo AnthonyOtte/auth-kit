@@ -1,6 +1,5 @@
 // Crypto / TOTP / password-strength / audit-log helpers.
-import otplib from "otplib";
-const { authenticator } = otplib;
+import { generateSecret, generateURI, verifySync } from "otplib";
 import QRCode from "qrcode";
 import zxcvbn from "zxcvbn";
 import bcrypt from "bcrypt";
@@ -10,12 +9,12 @@ import { ctx } from "./context";
 import { isSuperAdminEmail as isSuperAdminEmailRaw } from "../shared/super-admin";
 
 export function generateTotpSecret(): string {
-  return authenticator.generateSecret();
+  return generateSecret();
 }
 
 export function buildTotpUri(email: string, secret: string): string {
   const issuer = ctx().config.totpIssuer;
-  return authenticator.keyuri(email, issuer, secret);
+  return generateURI({ issuer, label: email, secret });
 }
 
 export async function buildTotpQrDataUrl(
@@ -29,8 +28,8 @@ export async function buildTotpQrDataUrl(
 export function verifyTotpToken(secret: string, token: string): boolean {
   if (!/^\d{6}$/.test(token)) return false;
   try {
-    authenticator.options = { window: 1 };
-    return authenticator.check(token, secret);
+    const result = verifySync({ token, secret, epochTolerance: 30 });
+    return result.valid;
   } catch {
     return false;
   }
